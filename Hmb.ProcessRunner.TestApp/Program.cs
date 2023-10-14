@@ -38,12 +38,23 @@ public class Program
             envNamesCommand
         };
 
+        // counter command
+        var counterCommand = new Command("counter", "Command to count to the specified number");
+        var counterNumberArgument = new Argument<long>(name: "number", description: "Number to count to", getDefaultValue: () => Convert.ToInt64(int.MaxValue));
+        counterCommand.AddArgument(counterNumberArgument);
+        counterCommand.SetHandler((number) =>
+        {
+            for (var i = 0; i < number; i++)
+            { Console.WriteLine(i); }
+        }, counterNumberArgument);
+
 
         var rootCommand = new RootCommand {
             echoCommand,
             exitCommand,
             sleepCommand,
-            envCommand
+            envCommand,
+            counterCommand
         };
         await rootCommand.InvokeAsync(args);
     }
