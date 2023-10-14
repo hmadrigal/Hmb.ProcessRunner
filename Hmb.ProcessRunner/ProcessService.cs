@@ -49,7 +49,7 @@ public class ProcessService
         standardErrorWriter ??= TextWriter.Null;
         surrogateEnvironmentalVariables ??= new Dictionary<string, string?>();
 
-        var process = GetNewProcessInstance(
+        using var process = GetNewProcessInstance(
             command,
             workingDirectory,
             standardOutputEncoding,
@@ -91,13 +91,13 @@ public class ProcessService
             process.BeginErrorReadLine();
 
             await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+
         }
         finally
         {
             _processes.Remove(process);
             process.OutputDataReceived -= OnProcessOutputDataReceived;
             process.ErrorDataReceived -= OnProcessErrorDataReceived;
-            process.Dispose();
         }
 
         standardOutputChannel?.Writer.TryComplete();
@@ -106,9 +106,7 @@ public class ProcessService
         await standardOutputWriter.FlushAsync().ConfigureAwait(false);
         await standardErrorWriter.FlushAsync().ConfigureAwait(false);
 
-        var exitCode = process.ExitCode;
-        process.Dispose();
-        return exitCode;
+        return process.ExitCode;
     }
 
     /// <summary>
