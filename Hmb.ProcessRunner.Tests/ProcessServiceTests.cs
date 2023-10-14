@@ -143,47 +143,51 @@ internal class ProcessServiceTests
         Assert.That(sb.ToString().Trim(), Is.EqualTo(customPath));
     }
 
-    //[Test]
-    //public void CaptureStandardOutputUsingChannel()
-    //{
-    //    // arrange
-    //    const int countLimit = 100;
-    //    var cancellationTokenSource = new CancellationTokenSource();
-    //    var command = $@"dotnet {TestAppFilePath} counter {int.MaxValue}";
-    //    var stdOutputChannel = Channel.CreateUnbounded<string>();
-    //    var stopWatch = new Stopwatch();
+    [Test]
+    [Ignore("This test corrupts Test Runner, ignore for now.")]
+    public void CaptureStandardOutputUsingChannel()
+    {
+        // arrange
+        const int countLimit = 100;
+        var cancellationTokenSource = new CancellationTokenSource();
+        var command = $@"dotnet {TestAppFilePath} counter {int.MaxValue}";
+        var stdOutputChannel = Channel.CreateUnbounded<string>();
+        var stopWatch = new Stopwatch();
 
-    //    // act
-    //    stopWatch.Start();
-    //    var counter = 0;
-    //    var counterTask = _processService.ExecuteAsync(
-    //        command: command,
-    //        standardOutputChannel: stdOutputChannel,
-    //        cancellationToken: cancellationTokenSource.Token
-    //    );
+        // act
+        stopWatch.Start();
+        var counter = 0;
+        var counterTask = _processService.ExecuteAsync(
+            command: command,
+            standardOutputChannel: stdOutputChannel,
+            cancellationToken: cancellationTokenSource.Token
+        );
 
-    //    var readAllTaskCanceledException = Assert.ThrowsAsync<TaskCanceledException>(async () =>
-    //    {
-    //        await foreach (var number in stdOutputChannel.Reader.ReadAllAsync(cancellationTokenSource.Token))
-    //        {
-    //            if (counter < countLimit)
-    //            { counter++; }
+        var readAllTaskCanceledException = Assert.ThrowsAsync<TaskCanceledException>(async () =>
+        {
+            await foreach (var number in stdOutputChannel.Reader.ReadAllAsync(cancellationTokenSource.Token))
+            {
+                if (counter < countLimit)
+                { 
+                    counter++;
+                    continue;
+                }
 
-    //            cancellationTokenSource.Cancel();
-    //        }
-    //    });
+                cancellationTokenSource.Cancel();
+            }
+        });
 
-    //    var counterTaskCanceledException = Assert.ThrowsAsync<TaskCanceledException>(async () =>
-    //    {
-    //        await counterTask;
-    //    });
-    //    stopWatch.Stop();
+        var counterTaskCanceledException = Assert.ThrowsAsync<TaskCanceledException>(async () =>
+        {
+            await counterTask;
+        });
+        stopWatch.Stop();
 
-    //    // assert
-    //    Assert.That(counter, Is.EqualTo(countLimit));
-    //    Assert.That(readAllTaskCanceledException, Is.Not.Null);
-    //    Assert.That(counterTaskCanceledException, Is.Not.Null);
-    //    Assert.That(stopWatch.ElapsedMilliseconds, Is.LessThan(15000));
-    //}
+        // assert
+        Assert.That(counter, Is.EqualTo(countLimit));
+        Assert.That(readAllTaskCanceledException, Is.Not.Null);
+        Assert.That(counterTaskCanceledException, Is.Not.Null);
+        Assert.That(stopWatch.ElapsedMilliseconds, Is.LessThan(15000));
+    }
 
 }
