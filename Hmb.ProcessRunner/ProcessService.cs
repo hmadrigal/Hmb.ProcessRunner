@@ -14,6 +14,36 @@ public class ProcessService
     private readonly Dictionary<Process, (TextWriter, TextWriter, Channel<string>?, Channel<string>?, CancellationToken)> _processes = new();
 
     /// <summary>
+    /// Looks for a file in the directories specified in the PATH environment variable.
+    /// Additional lookup paths can be specified, if not provided the current directory is used.
+    /// </summary>
+    /// <param name="executableFileName"></param>
+    /// <param name="additionalLookupPaths"></param>
+    /// <returns></returns>
+    public IEnumerable<string> Which(
+        string executableFileName,
+        params string[] additionalLookupPaths)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(executableFileName, nameof(executableFileName));
+
+        additionalLookupPaths ??= new string[] { Environment.CurrentDirectory };
+
+        var environmentPath = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+
+        IEnumerable<string> lookupPaths = environmentPath.Split(Path.PathSeparator);
+        lookupPaths = lookupPaths.Concat(additionalLookupPaths);
+
+        foreach (var path in lookupPaths)
+        {
+            var fullPath = Path.Combine(path, executableFileName);
+            if (File.Exists(fullPath))
+            {
+                yield return fullPath;
+            }
+        }
+    }
+
+    /// <summary>
     /// Executes a command in a new process.
     /// </summary>
     /// <param name="command">The command to execute</param>
@@ -109,77 +139,6 @@ public class ProcessService
         return process.ExitCode;
     }
 
-    /// <summary>
-    /// Looks for a file in the directories specified in the PATH environment variable.
-    /// Additional lookup paths can be specified, if not provided the current directory is used.
-    /// </summary>
-    /// <param name="executableFileName"></param>
-    /// <param name="additionalLookupPaths"></param>
-    /// <returns></returns>
-    public IEnumerable<string> Which(
-        string executableFileName,
-        params string[] additionalLookupPaths)
-    {
-        ArgumentException.ThrowIfNullOrEmpty(executableFileName, nameof(executableFileName));
-
-        additionalLookupPaths ??= new string[] { Environment.CurrentDirectory };
-
-        var environmentPath = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
-
-        IEnumerable<string> lookupPaths = environmentPath.Split(Path.PathSeparator);
-        lookupPaths = lookupPaths.Concat(additionalLookupPaths);
-
-        foreach (var path in lookupPaths)
-        {
-            var fullPath = Path.Combine(path, executableFileName);
-            if (File.Exists(fullPath))
-            {
-                yield return fullPath;
-            }
-        }
-    }
-
-    private async void OnProcessErrorDataReceived(object sender, DataReceivedEventArgs e)
-    {
-        var process = (Process)sender;
-        var (_, stdErrWriter, _, stdErrChannel, cancellationToken) = _processes[process];
-
-        if (cancellationToken.IsCancellationRequested)
-        { process.ErrorDataReceived -= OnProcessErrorDataReceived; }
-        cancellationToken.ThrowIfCancellationRequested();
-
-        await WriteReceivedData(e, stdErrWriter, stdErrChannel, cancellationToken).ConfigureAwait(false);
-    }
-
-    private static async Task WriteReceivedData(DataReceivedEventArgs dataReceivedEventArgs, TextWriter textWriter, Channel<string>? channel, CancellationToken cancellationToken)
-    {
-        if (dataReceivedEventArgs.Data == null)
-        {
-            await textWriter.FlushAsync().ConfigureAwait(false);
-            return;
-        }
-        textWriter.Write(dataReceivedEventArgs.Data);
-
-        if (channel != null)
-        {
-            await channel.Writer.WriteAsync(dataReceivedEventArgs.Data, cancellationToken).ConfigureAwait(false);
-        }
-
-        cancellationToken.ThrowIfCancellationRequested();
-    }
-
-    private async void OnProcessOutputDataReceived(object sender, DataReceivedEventArgs e)
-    {
-        var process = (Process)sender;
-        var (stdOutWriter, _, stdOutChannel, _, cancellationToken) = _processes[process];
-
-        if (cancellationToken.IsCancellationRequested)
-        { process.OutputDataReceived -= OnProcessOutputDataReceived; }
-        cancellationToken.ThrowIfCancellationRequested();
-
-        await WriteReceivedData(e, stdOutWriter, stdOutChannel, cancellationToken).ConfigureAwait(false);
-    }
-
     private Process GetNewProcessInstance(
         string command,
         string? workingDirectory = null,
@@ -225,4 +184,47 @@ public class ProcessService
 
         return process;
     }
+
+    private async void OnProcessErrorDataReceived(object sender, DataReceivedEventArgs e)
+    {
+        var process = (Process)sender;
+        var (_, stdErrWriter, _, stdErrChannel, cancellationToken) = _processes[process];
+
+        if (cancellationToken.IsCancellationRequested)
+        { process.ErrorDataReceived -= OnProcessErrorDataReceived; }
+        cancellationToken.ThrowIfCancellationRequested();
+
+        await WriteReceivedData(e, stdErrWriter, stdErrChannel, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async void OnProcessOutputDataReceived(object sender, DataReceivedEventArgs e)
+    {
+        var process = (Process)sender;
+        var (stdOutWriter, _, stdOutChannel, _, cancellationToken) = _processes[process];
+
+        if (cancellationToken.IsCancellationRequested)
+        { process.OutputDataReceived -= OnProcessOutputDataReceived; }
+        cancellationToken.ThrowIfCancellationRequested();
+
+        await WriteReceivedData(e, stdOutWriter, stdOutChannel, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task WriteReceivedData(DataReceivedEventArgs dataReceivedEventArgs, TextWriter textWriter, Channel<string>? channel, CancellationToken cancellationToken)
+    {
+        if (dataReceivedEventArgs.Data == null)
+        {
+            await textWriter.FlushAsync().ConfigureAwait(false);
+            return;
+        }
+
+        await textWriter.WriteAsync(dataReceivedEventArgs.Data).ConfigureAwait(false);
+
+        if (channel != null)
+        {
+            await channel.Writer.WriteAsync(dataReceivedEventArgs.Data, cancellationToken).ConfigureAwait(false);
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+    }
+
 }
