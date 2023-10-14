@@ -80,19 +80,25 @@ public class ProcessService
         process.OutputDataReceived += OnProcessOutputDataReceived;
         process.ErrorDataReceived += OnProcessErrorDataReceived;
 
-        var hasProcessStarted = process.Start();
-        if (!hasProcessStarted)
+        try
         {
-            throw new ProcessServiceException($"Failed to execute command: {command}");
+            var hasProcessStarted = process.Start();
+            if (!hasProcessStarted)
+            {
+                throw new ProcessServiceException($"Failed to execute command: {command}");
+            }
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+
+            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
         }
-        process.BeginOutputReadLine();
-        process.BeginErrorReadLine();
-
-        await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
-        _processes.Remove(process);
-
-        process.OutputDataReceived -= OnProcessOutputDataReceived;
-        process.ErrorDataReceived -= OnProcessErrorDataReceived;
+        finally
+        {
+            _processes.Remove(process);
+            process.OutputDataReceived -= OnProcessOutputDataReceived;
+            process.ErrorDataReceived -= OnProcessErrorDataReceived;
+            process.Dispose();
+        }
 
         standardOutputChannel?.Writer.TryComplete();
         standardErrorChannel?.Writer.TryComplete();
@@ -100,7 +106,9 @@ public class ProcessService
         await standardOutputWriter.FlushAsync().ConfigureAwait(false);
         await standardErrorWriter.FlushAsync().ConfigureAwait(false);
 
-        return process.ExitCode;
+        var exitCode = process.ExitCode;
+        process.Dispose();
+        return exitCode;
     }
 
     /// <summary>
@@ -138,6 +146,8 @@ public class ProcessService
         var process = (Process)sender;
         var (_, stdErrWriter, _, stdErrChannel, cancellationToken) = _processes[process];
 
+        if (cancellationToken.IsCancellationRequested)
+        { process.ErrorDataReceived -= OnProcessErrorDataReceived; }
         cancellationToken.ThrowIfCancellationRequested();
 
         await WriteReceivedData(e, stdErrWriter, stdErrChannel, cancellationToken).ConfigureAwait(false);
@@ -164,7 +174,11 @@ public class ProcessService
     {
         var process = (Process)sender;
         var (stdOutWriter, _, stdOutChannel, _, cancellationToken) = _processes[process];
+
+        if (cancellationToken.IsCancellationRequested)
+        { process.OutputDataReceived -= OnProcessOutputDataReceived; }
         cancellationToken.ThrowIfCancellationRequested();
+
         await WriteReceivedData(e, stdOutWriter, stdOutChannel, cancellationToken).ConfigureAwait(false);
     }
 
