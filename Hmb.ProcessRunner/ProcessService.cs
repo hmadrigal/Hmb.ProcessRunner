@@ -190,8 +190,6 @@ public class ProcessService
         var process = (Process)sender;
         var (_, stdErrWriter, _, stdErrChannel, cancellationToken) = _processes[process];
 
-        if (cancellationToken.IsCancellationRequested)
-        { process.ErrorDataReceived -= OnProcessErrorDataReceived; }
         cancellationToken.ThrowIfCancellationRequested();
 
         await WriteReceivedData(e, stdErrWriter, stdErrChannel, cancellationToken).ConfigureAwait(false);
@@ -202,8 +200,6 @@ public class ProcessService
         var process = (Process)sender;
         var (stdOutWriter, _, stdOutChannel, _, cancellationToken) = _processes[process];
 
-        if (cancellationToken.IsCancellationRequested)
-        { process.OutputDataReceived -= OnProcessOutputDataReceived; }
         cancellationToken.ThrowIfCancellationRequested();
 
         await WriteReceivedData(e, stdOutWriter, stdOutChannel, cancellationToken).ConfigureAwait(false);
