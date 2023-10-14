@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <Title>HMB Process Runner</Title>
+    <Description>Process Runner helps you to run your custom shell commands asyncrhounly.</Description>
+  </PropertyGroup>
+
+</Project>
