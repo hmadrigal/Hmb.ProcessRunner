@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
@@ -7,6 +7,22 @@
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Title>HMB Process Runner</Title>
     <Description>Process Runner helps you to run your custom shell commands asyncrhounly.</Description>
+	  <PackageReadmeFile>README.md</PackageReadmeFile>
+	  <PackageProjectUrl>https://github.com/hmadrigal/Hmb.ProcessRunner</PackageProjectUrl>
+	  <RepositoryUrl>https://github.com/hmadrigal/Hmb.ProcessRunner</RepositoryUrl>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="..\README.md" Link="README.md">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
 
 </Project>
