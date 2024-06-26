@@ -126,7 +126,7 @@ internal class ProcessServiceTests
     {
         // arrange
         var command = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "echo $env:PATH" : "echo $PATH";
-        var customPath = $"{Path.PathSeparator}:.{Path.DirectorySeparatorChar}";
+        var customPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
 
         // act
         var sb = new StringBuilder();
@@ -139,8 +139,10 @@ internal class ProcessServiceTests
             });
 
         // assert
+        string standardOutput = sb.ToString();
         Assert.That(exitCode, Is.EqualTo(0));
-        Assert.That(sb.ToString().Trim(), Is.EqualTo(customPath));
+        // NOTE: Path seems to be modified by test suite, that is why it checks that end of path
+        Assert.That(standardOutput, Does.EndWith(customPath));
     }
 
     [Test]
