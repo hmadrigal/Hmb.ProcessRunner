@@ -27,7 +27,7 @@ public class ProcessService
     {
         ArgumentException.ThrowIfNullOrEmpty(executableFileName, nameof(executableFileName));
 
-        additionalLookupPaths ??= new string[] { Environment.CurrentDirectory };
+        additionalLookupPaths ??= [Environment.CurrentDirectory];
 
         var environmentPath = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
 
@@ -95,7 +95,7 @@ public class ProcessService
             standardErrorChannel,
             cancellationToken);
 
-        if (retainedEnvironmentalVariables != null)
+        if (retainedEnvironmentalVariables is not null)
         {
             var keysToRemove = process.StartInfo.Environment.Keys
                 .Where(key => !retainedEnvironmentalVariables.Contains(key));
@@ -134,8 +134,8 @@ public class ProcessService
         standardOutputChannel?.Writer.TryComplete();
         standardErrorChannel?.Writer.TryComplete();
 
-        await standardOutputWriter.FlushAsync().ConfigureAwait(false);
-        await standardErrorWriter.FlushAsync().ConfigureAwait(false);
+        await standardOutputWriter.FlushAsync(cancellationToken).ConfigureAwait(false);
+        await standardErrorWriter.FlushAsync(cancellationToken).ConfigureAwait(false);
 
         return process.ExitCode;
     }
@@ -220,13 +220,13 @@ public class ProcessService
     {
         if (dataReceivedEventArgs.Data is null)
         {
-            await textWriter.FlushAsync().ConfigureAwait(false);
+            await textWriter.FlushAsync(cancellationToken).ConfigureAwait(false);
             return;
         }
 
         await textWriter.WriteAsync(dataReceivedEventArgs.Data).ConfigureAwait(false);
 
-        if (channel != null)
+        if (channel is not null)
         {
             await channel.Writer.WriteAsync(dataReceivedEventArgs.Data, cancellationToken).ConfigureAwait(false);
         }
