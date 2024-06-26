@@ -146,50 +146,34 @@ internal class ProcessServiceTests
     }
 
     [Test]
-    [Ignore("This test corrupts Test Runner, ignore for now.")]
-    public void CaptureStandardOutputUsingChannel()
+    public async Task CaptureStandardOutputUsingChannel()
     {
         // arrange
-        const int countLimit = 100;
-        var cancellationTokenSource = new CancellationTokenSource();
-        var command = $@"dotnet {TestAppFilePath} counter {int.MaxValue}";
-        var stdOutputChannel = Channel.CreateUnbounded<string>();
-        var stopWatch = new Stopwatch();
+        const int countLimit = 20_000;
+        string command = $@"dotnet {TestAppFilePath} csv --count {countLimit}";
+        Channel<string> stdOutputChannel = Channel.CreateUnbounded<string>();
+
 
         // act
-        stopWatch.Start();
-        var counter = 0;
-        var counterTask = _processService.ExecuteAsync(
-            command: command,
-            standardOutputChannel: stdOutputChannel,
-            cancellationToken: cancellationTokenSource.Token
-        );
-
-        var readAllTaskCanceledException = Assert.ThrowsAsync<TaskCanceledException>(async () =>
+        Task producer = Task.Run(async () =>
         {
-            await foreach (var number in stdOutputChannel.Reader.ReadAllAsync(cancellationTokenSource.Token))
+            await _processService.ExecuteAsync(
+                command: command,
+                standardOutputChannel: stdOutputChannel
+            );
+        });
+        int counter = 0;
+        Task consumer = Task.Run(async () =>
+        {
+            await foreach (var standardOutputLine in stdOutputChannel.Reader.ReadAllAsync())
             {
-                if (counter < countLimit)
-                { 
-                    counter++;
-                    continue;
-                }
-
-                cancellationTokenSource.Cancel();
+                counter++;
             }
         });
-
-        var counterTaskCanceledException = Assert.ThrowsAsync<TaskCanceledException>(async () =>
-        {
-            await counterTask;
-        });
-        stopWatch.Stop();
+        await Task.WhenAll(producer, consumer);
 
         // assert
         Assert.That(counter, Is.EqualTo(countLimit));
-        Assert.That(readAllTaskCanceledException, Is.Not.Null);
-        Assert.That(counterTaskCanceledException, Is.Not.Null);
-        Assert.That(stopWatch.ElapsedMilliseconds, Is.LessThan(15000));
     }
 
 }
