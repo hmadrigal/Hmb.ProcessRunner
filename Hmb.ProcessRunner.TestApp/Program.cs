@@ -1,9 +1,16 @@
 ﻿// See https://aka.ms/new-console-template for more information
+using Bogus;
 using System.CommandLine;
 using System.Text;
 
 public class Program
 {
+    public enum CsvColumnsOption
+    {
+        A,
+        B, 
+        C
+    }
     private static async Task Main(string[] args)
     {
         // enabling unicode code characters for input/output
@@ -48,13 +55,35 @@ public class Program
             { Console.WriteLine(i); }
         }, counterNumberArgument);
 
+        // csv command
+        var csvCommand = new Command("csv", "Command to generate a CSV file");
+        var countOption = new Option<long>(name: "--count", getDefaultValue: () => 3, description: "Number of lines to generate in CSV");
+        countOption.AddAlias("-c");
+        var seedOption = new Option<int>(name: "--seed", getDefaultValue: () => 42, description: "Seed for pseudorandom generator");
+        seedOption.AddAlias("-s");
+        //Randomizer.Seed = new Random(8675309);
+        csvCommand.AddOption(countOption);
+        csvCommand.AddOption(seedOption);
+
+        csvCommand.SetHandler((seed, count) =>
+        {
+            count = Math.Abs(count);
+            var faker = new Faker();
+            faker.Random = new Randomizer(seed);
+            for (int i = 0; i < count; i++)
+            {
+                Console.WriteLine(string.Join(',', faker.Phone.PhoneNumber(), faker.Person.FirstName, faker.Address.City()));
+            }
+        }, seedOption, countOption);
+
 
         var rootCommand = new RootCommand {
             echoCommand,
             exitCommand,
             sleepCommand,
             envCommand,
-            counterCommand
+            counterCommand,
+            csvCommand
         };
         await rootCommand.InvokeAsync(args);
     }
