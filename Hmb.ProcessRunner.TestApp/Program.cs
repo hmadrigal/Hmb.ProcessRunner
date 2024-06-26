@@ -36,13 +36,22 @@ public class Program
         sleepCommand.SetHandler(async (seconds) => await Task.Delay(TimeSpan.FromSeconds(seconds)), sleepSecondsArgument);
 
         // env command
+        // env count command
         var envCountCommand = new Command("count", "Command to count environmental variables");
         envCountCommand.SetHandler(() => Console.WriteLine(Environment.GetEnvironmentVariables().Count));
+        // env names command
         var envNamesCommand = new Command("names", "Command to list environmental variable names");
         envNamesCommand.SetHandler(() => Console.WriteLine(string.Join(Environment.NewLine, Environment.GetEnvironmentVariables().Keys.OfType<string>())));
+        // env print command
+        var envPrintCommand = new Command("print", "Command to print environmental variable value");
+        var envPrintArgument = new Argument<string>(name: "name", description: "Environmental variable name", getDefaultValue: () => string.Empty);
+        envPrintCommand.AddArgument(envPrintArgument);
+        envPrintCommand.SetHandler((name) => Console.WriteLine(Environment.GetEnvironmentVariable(name) ?? string.Empty), envPrintArgument);
+
         var envCommand = new Command("env", "Command to related to environmental variables") {
             envCountCommand,
-            envNamesCommand
+            envNamesCommand,
+            envPrintCommand
         };
 
         // counter command
