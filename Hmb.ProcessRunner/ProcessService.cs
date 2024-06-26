@@ -11,7 +11,8 @@ namespace Hmb.ProcessRunner;
 public class ProcessService
 {
 
-    private readonly Dictionary<Process, (TextWriter, TextWriter, Channel<string>?, Channel<string>?, CancellationToken)> _processes = new();
+    private readonly IDictionary<Process, (TextWriter, TextWriter, Channel<string>?, Channel<string>?, CancellationToken)> _processes = 
+        new System.Collections.Concurrent.ConcurrentDictionary<Process, (TextWriter, TextWriter, Channel<string>?, Channel<string>?, CancellationToken)>();
 
     /// <summary>
     /// Looks for a file in the directories specified in the PATH environment variable.
@@ -187,8 +188,13 @@ public class ProcessService
 
     private async void OnProcessErrorDataReceived(object sender, DataReceivedEventArgs e)
     {
-        var process = (Process)sender;
-        var (_, stdErrWriter, _, stdErrChannel, cancellationToken) = _processes[process];
+        if (sender is not Process process)
+        { return; }
+        
+        if (!_processes.TryGetValue(process, out var tuple))
+        { return; }
+
+        var (stdErrWriter, _, _, stdErrChannel, cancellationToken) = tuple;
 
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -197,8 +203,13 @@ public class ProcessService
 
     private async void OnProcessOutputDataReceived(object sender, DataReceivedEventArgs e)
     {
-        var process = (Process)sender;
-        var (stdOutWriter, _, stdOutChannel, _, cancellationToken) = _processes[process];
+        if (sender is not Process process)
+        { return; }
+
+        if (!_processes.TryGetValue(process, out var tuple))
+        { return; }
+
+        var (stdOutWriter, _, stdOutChannel, _, cancellationToken) = tuple;
 
         cancellationToken.ThrowIfCancellationRequested();
 
