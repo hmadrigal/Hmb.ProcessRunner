@@ -34,10 +34,12 @@ Options:
   -?, -h, --help  Show help and usage information
 
 Commands:
-  echo <message>   Echos the first argument []
-  exit <exitCode>  Exits the application [default: 0]
-  sleep <seconds>  Sleeps for the specified number of seconds [default: 1]
-  env              Command to related to environmental variables
+  echo <message>    Echos the first argument []
+  exit <exitCode>   Exits the application [default: 0]
+  sleep <seconds>   Sleeps for the specified number of seconds [default: 1]
+  env               Command to related to environmental variables
+  counter <number>  Command to count to the specified number [default: 2147483647]
+  csv               Command to generate a CSV file
 ```
 
 ### Execute command without error
@@ -76,8 +78,9 @@ Assert.That(sb.ToString(), Is.EqualTo(unicodeMessage));
 ### Overrides environment variables
 ```csharp
 // arrange
-var command = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "echo $env:PATH" : "echo $PATH";
-var customPath = $"{Path.PathSeparator}:.{Path.DirectorySeparatorChar}";
+string EnvVarName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "HOMEPATH" : @"HOME";
+string command = $@"dotnet {TestAppFilePath} env print {EnvVarName}";
+var envVarValue = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
 
 // act
 var sb = new StringBuilder();
@@ -86,12 +89,14 @@ var exitCode = await _processService.ExecuteAsync(
     command,
     standardOutputWriter: sw,
     surrogateEnvironmentalVariables: new Dictionary<string, string?> {
-        { "PATH", customPath }
+        { EnvVarName, envVarValue }
     });
 
 // assert
+string standardOutput = sb.ToString().Trim();
 Assert.That(exitCode, Is.EqualTo(0));
-Assert.That(sb.ToString().Trim(), Is.EqualTo(customPath));
+// NOTE: Path seems to be modified by test suite, that is why it checks that end of path
+Assert.That(standardOutput, Is.EqualTo(envVarValue));
 ```
 
 ### Which finds `dotnet` command
@@ -105,4 +110,34 @@ var foundFilePaths = _processService.Which(command);
 // assert
 Assert.That(foundFilePaths, Is.Not.Null);
 Assert.That(foundFilePaths.Any(), Is.True);
+```
+
+### Using `System.Threading.Channel` to capture large outputs
+```csharp
+// arrange
+const int countLimit = 20_000;
+string command = $@"dotnet {TestAppFilePath} csv --count {countLimit}";
+Channel<string> stdOutputChannel = Channel.CreateUnbounded<string>();
+
+
+// act
+Task producer = Task.Run(async () =>
+{
+    await _processService.ExecuteAsync(
+        command: command,
+        standardOutputChannel: stdOutputChannel
+    );
+});
+int counter = 0;
+Task consumer = Task.Run(async () =>
+{
+    await foreach (var standardOutputLine in stdOutputChannel.Reader.ReadAllAsync())
+    {
+        counter++;
+    }
+});
+await Task.WhenAll(producer, consumer);
+
+// assert
+Assert.That(counter, Is.EqualTo(countLimit));
 ```
