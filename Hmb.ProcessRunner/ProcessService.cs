@@ -170,7 +170,7 @@ public class ProcessService
             if (!File.Exists(osCommand))
             { osCommand = Which(osCommand).FirstOrDefault(); }
 
-            if (osCommand == null)
+            if (osCommand is null)
             { continue; }
 
             process.StartInfo.FileName = osCommand;
@@ -218,7 +218,7 @@ public class ProcessService
 
     private static async Task WriteReceivedData(DataReceivedEventArgs dataReceivedEventArgs, TextWriter textWriter, Channel<string>? channel, CancellationToken cancellationToken)
     {
-        if (dataReceivedEventArgs.Data == null)
+        if (dataReceivedEventArgs.Data is null)
         {
             await textWriter.FlushAsync().ConfigureAwait(false);
             return;
