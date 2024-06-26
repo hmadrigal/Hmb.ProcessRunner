@@ -125,8 +125,9 @@ internal class ProcessServiceTests
     public async Task OverridesEnvironmentVariables()
     {
         // arrange
-        var command = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "echo $env:PATH" : "echo $PATH";
-        var customPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        string EnvVarName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "HOMEPATH" : @"HOME";
+        string command = $@"dotnet {TestAppFilePath} env print {EnvVarName}";
+        var envVarValue = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
 
         // act
         var sb = new StringBuilder();
@@ -135,14 +136,14 @@ internal class ProcessServiceTests
             command,
             standardOutputWriter: sw,
             surrogateEnvironmentalVariables: new Dictionary<string, string?> {
-                { "PATH", customPath }
+                { EnvVarName, envVarValue }
             });
 
         // assert
-        string standardOutput = sb.ToString();
+        string standardOutput = sb.ToString().Trim();
         Assert.That(exitCode, Is.EqualTo(0));
         // NOTE: Path seems to be modified by test suite, that is why it checks that end of path
-        Assert.That(standardOutput, Does.EndWith(customPath));
+        Assert.That(standardOutput, Is.EqualTo(envVarValue));
     }
 
     [Test]
