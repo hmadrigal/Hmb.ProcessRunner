@@ -8,7 +8,7 @@ public class Program
     public enum CsvColumnsOption
     {
         A,
-        B, 
+        B,
         C
     }
     private static async Task Main(string[] args)
