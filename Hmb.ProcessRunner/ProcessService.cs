@@ -11,7 +11,7 @@ namespace Hmb.ProcessRunner;
 public class ProcessService
 {
 
-    private readonly IDictionary<Process, (TextWriter, TextWriter, Channel<string>?, Channel<string>?, CancellationToken)> _processes = 
+    private readonly IDictionary<Process, (TextWriter, TextWriter, Channel<string>?, Channel<string>?, CancellationToken)> _processes =
         new System.Collections.Concurrent.ConcurrentDictionary<Process, (TextWriter, TextWriter, Channel<string>?, Channel<string>?, CancellationToken)>();
 
     /// <summary>
@@ -190,7 +190,7 @@ public class ProcessService
     {
         if (sender is not Process process)
         { return; }
-        
+
         if (!_processes.TryGetValue(process, out var tuple))
         { return; }
 
